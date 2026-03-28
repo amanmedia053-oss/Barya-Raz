@@ -1,89 +1,115 @@
-‎name: Build Android APK
-‎on:
-‎  push:
-‎    branches: [ main ]
-‎
-‎jobs:
-‎  build:
-‎    runs-on: ubuntu-latest
-‎    permissions:
-‎      contents: write
-‎    steps:
-‎      - uses: actions/checkout@v4
-‎
-‎      # ۱. جاوا ۲۱ (د Gradle د ستونزو لپاره)
-‎      - name: set up JDK 21
-‎        uses: actions/setup-java@v4
-‎        with:
-‎          java-version: '21'
-‎          distribution: 'zulu'
-‎
-‎      - name: Install dependencies
-‎        run: |
-‎          npm install
-‎          # د Capacitor اړین کتابتونونه انسټالول
-‎          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/assets @capacitor/share @capacitor/filesystem
-‎
-‎      - name: Build Web App
-‎        run: npm run build
-‎
-‎      - name: Sync with Capacitor
-‎        run: |
-‎          # د عمرې لارښود نوم او خپل Package ID مو ورکړ
-‎          npx cap init "د اسلامي امارت د بريا راز " "com.obaidapp.baryaapp" --web-dir dist
-‎          npx cap add android
-‎          npx cap sync android
-‎
-‎      # ۲. د آیکن برخه (اصلاح شوې)
-‎      - name: Generate Icon
-‎        run: |
-‎          if [ -f "logo.png" ]; then
-‎            mkdir -p assets
-‎            # دلته مو logo.png په icon.png بدل کړ ترڅو capacitor-assets یې وپیژني
-‎            cp logo.png assets/icon.png
-‎            npx capacitor-assets generate --android
-‎          else
-‎            echo "Warning: logo.png not found, skipping icon generation."
-‎          fi
-‎
-‎      # ۳. د انټرنیټ او سټوریج اجازې (Permissions)
-‎      # یادونه: ستاسو په اپلیکیشن کې آډیو له انټرنیټ څخه غږول کیږي، نو د انټرنیټ اجازه ډېره اړینه ده.
-‎      - name: Inject Permissions and Fix Name
-‎        run: |
-‎          cd android/app/src/main
-‎          
-‎          # په AndroidManifest.xml کې د انټرنیټ او سټوریج اجازې ورزیاتوو
-‎          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"\/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" \/>\n    <application/g' AndroidManifest.xml
-‎          
-‎          # د ډاونلوډ لپاره "ClearText" او "Legacy Storage" فعاله کوو
-‎          sed -i 's/<application/<application android:usesCleartextTraffic="true" android:requestLegacyExternalStorage="true"/g' AndroidManifest.xml
-‎          
-‎          # د ډاډ لپاره د فایل چاپول
-‎          cat AndroidManifest.xml
-‎
-‎      # ۴. د Kotlin د تکراري فایلونو ستونزه (Fix)
-‎      - name: Fix Kotlin Dependency Conflict
-‎        run: |
-‎          cd android
-‎          echo "" >> build.gradle
-‎          echo "allprojects {" >> build.gradle
-‎          echo "    configurations.all {" >> build.gradle
-‎          echo "        resolutionStrategy {" >> build.gradle
-‎          echo "            force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'" >> build.gradle
-‎          echo "            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'" >> build.gradle
-‎          echo "            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'" >> build.gradle
-‎          echo "        }" >> build.gradle
-‎          echo "    }" >> build.gradle
-‎          echo "}" >> build.gradle
-‎
-‎      - name: Build Android APK
-‎        run: |
-‎          cd android
-‎          chmod +x gradlew
-‎          ./gradlew assembleDebug
-‎
-‎      - name: Upload APK
-‎        uses: actions/upload-artifact@v4
-‎        with:
-‎          name: Umrah-Guide-APK
-‎          path: android/app/build/outputs/apk/debug/app-debug.apk
+name: Build Asmaul Husna APK
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1️⃣ Java 21 Setup
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'zulu'
+
+      # 2️⃣ Node Setup + Cache
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: |
+          npm ci
+          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/assets @capacitor/share @capacitor/filesystem
+
+      - name: Build Web App
+        run: npm run build
+
+      # 3️⃣ Capacitor Init (Correct App Name + Package)
+      - name: Capacitor Sync
+        run: |
+          if [ ! -f capacitor.config.ts ] && [ ! -f capacitor.config.json ]; then
+            npx cap init "د اسلامي امارت د بريا رازونه" "af.obaidapp.baryaaa" --web-dir dist
+          fi
+          npx cap add android || true
+          npx cap sync android
+
+      # 4️⃣ Generate App Icon
+      - name: Generate Icon
+        run: |
+          if [ -f "logo.png" ]; then
+            mkdir -p assets
+            cp logo.png assets/icon.png
+            npx capacitor-assets generate --android
+          else
+            echo "logo.png not found, skipping icon generation."
+          fi
+
+      # 5️⃣ Proper Android Permissions (Play Store Safe)
+      - name: Inject Android Permissions
+        run: |
+          cd android/app/src/main
+
+          # Set correct package name
+          sed -i 's/package="[^"]*"/package="af.obaidapp.asmaulhusna"/' AndroidManifest.xml
+
+          # Add permissions safely
+          sed -i '/<manifest/a\
+    <uses-permission android:name="android.permission.INTERNET"/>\
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>\
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\
+          ' AndroidManifest.xml
+
+          # Enable cleartext safely
+          sed -i 's/<application/<application android:usesCleartextTraffic="true"/g' AndroidManifest.xml
+
+          cat AndroidManifest.xml
+
+      # 6️⃣ Gradle Memory Optimization (RAM Promotion)
+      - name: Optimize Gradle Memory
+        run: |
+          cd android
+          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8" >> gradle.properties
+          echo "org.gradle.daemon=true" >> gradle.properties
+          echo "org.gradle.parallel=true" >> gradle.properties
+          echo "org.gradle.configureondemand=true" >> gradle.properties
+
+      # 7️⃣ Fix Kotlin Conflict
+      - name: Fix Kotlin Dependency Conflict
+        run: |
+          cd android
+          echo "" >> build.gradle
+          echo "allprojects {" >> build.gradle
+          echo "    configurations.all {" >> build.gradle
+          echo "        resolutionStrategy {" >> build.gradle
+          echo "            force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'" >> build.gradle
+          echo "            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'" >> build.gradle
+          echo "            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'" >> build.gradle
+          echo "        }" >> build.gradle
+          echo "    }" >> build.gradle
+          echo "}" >> build.gradle
+
+      # 8️⃣ Build APK
+      - name: Build Debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      # 9️⃣ Upload APK
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Asmaul-Husna-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
