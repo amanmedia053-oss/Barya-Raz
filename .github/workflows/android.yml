@@ -65,9 +65,6 @@ jobs:
 
           # Add permissions safely
           sed -i '/<manifest/a\
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>\
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\
           ' AndroidManifest.xml
 
           # Enable cleartext safely
