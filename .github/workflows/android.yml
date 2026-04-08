@@ -60,23 +60,23 @@ jobs:
         run: |
           cd android/app/src/main
 
-          # Set correct package name
+          # د سم پیکج نوم تنظیمول
           sed -i 's/package="[^"]*"/package="af.obaidapp.asmaulhusna"/' AndroidManifest.xml
 
-          # Add permissions safely
-          sed -i '/<manifest/a\
-    <uses-permission android:name="android.permission.INTERNET"/>\
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>\
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\
-          ' AndroidManifest.xml
+          # د پرمیشنونو په خوندي ډول اضافه کول
+          cat << 'EOF' > perms.txt
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+          EOF
+          sed -i '/<manifest/r perms.txt' AndroidManifest.xml
+          rm perms.txt
 
-          # Enable cleartext safely
+          # د Cleartext ټرافيک فعالول
           sed -i 's/<application/<application android:usesCleartextTraffic="true"/g' AndroidManifest.xml
 
-          cat AndroidManifest.xml
-
-      # 6️⃣ Gradle Memory Optimization (RAM Promotion)
+      # 6️⃣ Gradle Memory Optimization
       - name: Optimize Gradle Memory
         run: |
           cd android
@@ -89,16 +89,18 @@ jobs:
       - name: Fix Kotlin Dependency Conflict
         run: |
           cd android
-          echo "" >> build.gradle
-          echo "allprojects {" >> build.gradle
-          echo "    configurations.all {" >> build.gradle
-          echo "        resolutionStrategy {" >> build.gradle
-          echo "            force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'" >> build.gradle
-          echo "            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'" >> build.gradle
-          echo "            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'" >> build.gradle
-          echo "        }" >> build.gradle
-          echo "    }" >> build.gradle
-          echo "}" >> build.gradle
+          cat << 'EOF' >> build.gradle
+
+          allprojects {
+              configurations.all {
+                  resolutionStrategy {
+                      force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'
+                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
+                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+                  }
+              }
+          }
+          EOF
 
       # 8️⃣ Build APK
       - name: Build Debug APK
