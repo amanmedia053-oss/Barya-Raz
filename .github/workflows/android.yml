@@ -39,7 +39,7 @@ jobs:
       - name: Capacitor Sync
         run: |
           if [ ! -f capacitor.config.ts ] && [ ! -f capacitor.config.json ]; then
-            npx cap init "د اسلامي امارت د بريا رازونه" "af.obaidapp.baryaaa" --web-dir dist
+            npx cap init "اسماء الحسنا" "af.obaidapp.asmaulhusna" --web-dir dist
           fi
           npx cap add android || true
           npx cap sync android
@@ -65,6 +65,10 @@ jobs:
 
           # Add permissions safely
           sed -i '/<manifest/a\
+    <uses-permission android:name="android.permission.INTERNET"/>\
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>\
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\
           ' AndroidManifest.xml
 
           # Enable cleartext safely
