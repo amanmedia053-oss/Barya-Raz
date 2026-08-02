@@ -3,82 +3,167 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { SettingsProvider, useSettings } from './context/SettingsContext';
-import { BookmarkProvider } from './context/BookmarkContext';
-import { Splash } from './pages/Splash';
-import { Onboarding } from './pages/Onboarding';
-import { Home } from './pages/Home';
-import { SectionDetail } from './pages/SectionDetail';
-import { Bookmarks } from './pages/Bookmarks';
-import { Settings } from './pages/Settings';
-import { About } from './pages/About';
-import { AnimatePresence } from 'motion/react';
+import React, { useState, useEffect } from 'react';
 import { App as CapApp } from '@capacitor/app';
-import { StatusBar, Style } from '@capacitor/status-bar';
+import { StatusBar } from '@capacitor/status-bar';
+import { ThemeProvider } from './components/ThemeProvider';
+import { Layout } from './components/Layout';
+import { Home } from './components/Home';
+import { Reading } from './components/Reading';
+import { LikedLessons } from './components/LikedLessons';
+import { Settings } from './components/Settings';
+import { About } from './components/About';
+import { SplashScreen } from './components/SplashScreen';
+import { Onboarding } from './components/Onboarding';
+import { ExitDialog } from './components/ExitDialog';
+import { useTheme } from './components/ThemeProvider';
+import { StructuredBook } from './types';
 
-function AppContent() {
-  const [showSplash, setShowSplash] = useState(true);
-  const { onboardingComplete, themeColor } = useSettings();
-  const navigate = useNavigate();
-  const location = useLocation();
+const StatusBarManager = () => {
+  const { theme, isDarkMode } = useTheme();
 
-  // Handle Android Back Button and Status Bar
   useEffect(() => {
-    // Set Status Bar
+    const updateStatusBar = async () => {
+      try {
+        // Disable overlay to allow setting a solid background color
+        await StatusBar.setOverlaysWebView({ overlay: false });
+        // Set background color to match theme primary
+        await StatusBar.setBackgroundColor({ color: theme.primary });
+        // Set style (icons color)
+        await StatusBar.setStyle({ style: 'DARK' as any }); 
+      } catch (e) {
+        console.warn('StatusBar plugin not available');
+      }
+    };
+    updateStatusBar();
+  }, [theme, isDarkMode]);
+
+  return null;
+};
+
+export default function App() {
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'reading' | 'favorites' | 'settings' | 'about'>('home');
+  const [selectedSectionId, setSelectedSectionId] = useState<number | undefined>(undefined);
+  const [selectedChapterNum, setSelectedChapterNum] = useState<number | undefined>(undefined);
+  const [showSplash, setShowSplash] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
+  const [customBook, setCustomBook] = useState<StructuredBook | null>(() => {
     try {
-      StatusBar.setStyle({ style: Style.Light });
-      StatusBar.setBackgroundColor({ color: '#ffffff' });
+      const saved = localStorage.getItem('custom_book');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleSaveBook = (book: StructuredBook) => {
+    setCustomBook(book);
+    try {
+      localStorage.setItem('custom_book', JSON.stringify(book));
     } catch (e) {
-      console.warn('StatusBar plugin not available');
+      console.warn('LocalStorage save error:', e);
+    }
+  };
+
+  useEffect(() => {
+    // Check if onboarding was already shown
+    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
+    if (!hasSeenOnboarding) {
+      setShowOnboarding(true);
     }
 
-    const backButtonListener = CapApp.addListener('backButton', ({ canGoBack }) => {
-      if (location.pathname === '/') {
-        // If we're at home, exit the app
-        CapApp.exitApp();
+    // Handle Back Button
+    const backListener = CapApp.addListener('backButton', ({ canGoBack }) => {
+      if (currentScreen !== 'home') {
+        setCurrentScreen('home');
+        setSelectedSectionId(undefined);
+      } else if (selectedSectionId !== undefined) {
+        setSelectedSectionId(undefined);
       } else {
-        // Otherwise, go back in history
-        navigate(-1);
+        setShowExitDialog(true);
       }
     });
 
     return () => {
-      backButtonListener.then(l => l.remove());
+      backListener.then(l => l.remove());
     };
-  }, [location.pathname, navigate]);
+  }, [currentScreen, selectedSectionId]);
 
-  if (showSplash) {
-    return <Splash onFinish={() => setShowSplash(false)} />;
-  }
+  const handleOnboardingFinish = () => {
+    localStorage.setItem('hasSeenOnboarding', 'true');
+    setShowOnboarding(false);
+  };
 
-  if (!onboardingComplete) {
-    return <Onboarding />;
-  }
+  const handleRead = (lessonId?: number, chapterNum?: number) => {
+    setSelectedSectionId(lessonId);
+    setSelectedChapterNum(chapterNum);
+    setCurrentScreen('reading');
+  };
+
+  const renderScreen = () => {
+    switch (currentScreen) {
+      case 'home':
+        return (
+          <Home 
+            onSelectChapter={(chapNum) => handleRead(undefined, chapNum)}
+            onSelectLesson={(lesId) => handleRead(lesId)} 
+            activeBook={customBook} 
+          />
+        );
+      case 'reading':
+        return (
+          <Reading 
+            selectedId={selectedSectionId} 
+            selectedChapterNum={selectedChapterNum}
+            onBack={() => {
+              setCurrentScreen('home');
+              setSelectedChapterNum(undefined);
+              setSelectedSectionId(undefined);
+            }} 
+            activeBook={customBook}
+          />
+        );
+      case 'favorites':
+        return (
+          <LikedLessons 
+            onSelectLesson={(lesId, chapNum) => handleRead(lesId, chapNum)}
+            onBackToHome={() => setCurrentScreen('home')}
+            activeBook={customBook}
+          />
+        );
+      case 'settings':
+        return <Settings />;
+      case 'about':
+        return <About />;
+      default:
+        return (
+          <Home 
+            onSelectChapter={(chapNum) => handleRead(undefined, chapNum)}
+            onSelectLesson={(lesId) => handleRead(lesId)} 
+            activeBook={customBook} 
+          />
+        );
+    }
+  };
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/section/:id" element={<SectionDetail />} />
-        <Route path="/bookmarks" element={<Bookmarks />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/about" element={<About />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </AnimatePresence>
-  );
-}
+    <ThemeProvider>
+      <StatusBarManager />
+      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+      {showOnboarding && !showSplash && <Onboarding onFinish={handleOnboardingFinish} />}
+      
+      <Layout 
+        currentScreen={currentScreen} 
+        onScreenChange={(screen) => {
+          setCurrentScreen(screen);
+          setSelectedSectionId(undefined);
+        }}
+      >
+        {renderScreen()}
+      </Layout>
 
-export default function App() {
-  return (
-    <SettingsProvider>
-      <BookmarkProvider>
-        <Router>
-          <AppContent />
-        </Router>
-      </BookmarkProvider>
-    </SettingsProvider>
+      <ExitDialog isOpen={showExitDialog} onClose={() => setShowExitDialog(false)} />
+    </ThemeProvider>
   );
 }
