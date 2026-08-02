@@ -1,158 +1,131 @@
-import React, { useState, useEffect, ReactNode } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useSettings } from '../context/SettingsContext';
-import { useTranslation } from 'react-i18next';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { AppIcon, IconType } from './AppIcon';
+import { Menu, X, Home, BookOpen, Settings, Info, Moon, Sun, Heart } from 'lucide-react';
+import { useTheme } from './ThemeProvider';
+import { MENU_ITEMS } from '../constants';
 import { cn } from '../lib/utils';
 
 interface LayoutProps {
-  children: ReactNode;
-  title?: string;
-  showBack?: boolean;
-  actions?: ReactNode;
+  children: React.ReactNode;
+  currentScreen: string;
+  onScreenChange: (screen: any) => void;
 }
 
-export function Layout({ children, title, showBack, actions }: LayoutProps) {
-  const { isRTL, themeColor, font } = useSettings();
-  const { t } = useTranslation();
+export const Layout: React.FC<LayoutProps> = ({ children, currentScreen, onScreenChange }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { theme, isDarkMode, toggleDarkMode } = useTheme();
 
-  const menuItems: { icon: IconType; label: string; path: string }[] = [
-    { icon: 'home', label: t('home'), path: '/' },
-    { icon: 'bookmarks', label: t('bookmarks'), path: '/bookmarks' },
-    { icon: 'settings', label: t('settings'), path: '/settings' },
-    { icon: 'about', label: t('about'), path: '/about' },
-  ];
-
-  const toggleDrawer = () => setIsDrawerOpen(!isDrawerOpen);
+  const getIcon = (id: string) => {
+    switch (id) {
+      case 'home': return <Home size={20} />;
+      case 'reading': return <BookOpen size={20} />;
+      case 'favorites': return <Heart size={20} />;
+      case 'settings': return <Settings size={20} />;
+      case 'about': return <Info size={20} />;
+      default: return null;
+    }
+  };
 
   return (
-    <div 
-      className={cn("min-h-screen flex flex-col relative overflow-hidden bg-slate-50 text-slate-900")}
-      style={{ fontFamily: font.value }}
-    >
-      {/* Geometric Background Layer */}
-      <div className="fixed inset-0 geometric-bg pointer-events-none z-0" />
-
+    <div className="min-h-screen flex flex-col relative overflow-hidden">
       {/* AppBar */}
       <header 
         className={cn(
-          "sticky top-0 z-40 w-full flex items-center justify-between px-4 transition-colors duration-300 bg-white/80 backdrop-blur-md border-b border-slate-200 safe-area-top h-[calc(4rem+var(--safe-area-top))]"
+          "sticky top-0 z-40 px-4 py-4 flex items-center justify-between shadow-lg transition-all duration-300",
+          isDarkMode ? "border-b border-white/10 shadow-black/20" : "border-b border-black/5 shadow-black/5"
         )}
+        style={{ background: theme.gradient }}
       >
-        <div className="flex items-center gap-3">
-          {showBack ? (
-            <button 
-              onClick={() => navigate(-1)}
-              className="p-2 rounded-full hover:bg-black/5 transition-colors"
-            >
-              <div className={cn("w-6 h-6 flex items-center justify-center")}>
-                 <AppIcon name="arrow-left" size={24} />
-              </div>
-            </button>
-          ) : (
-            <button 
-              onClick={toggleDrawer}
-              className="p-2 rounded-full hover:bg-black/5 transition-colors"
-            >
-              <div className="flex flex-col gap-1.5 w-6">
-                <div className={cn("h-0.5 w-full rounded-full", themeColor.light)} />
-                <div className={cn("h-0.5 w-2/3 rounded-full", themeColor.light)} />
-                <div className={cn("h-0.5 w-full rounded-full", themeColor.light)} />
-              </div>
-            </button>
-          )}
-          <h1 className="text-xl font-bold tracking-tight truncate max-w-[200px]">
-            {title || "نور الامارات"}
-          </h1>
-        </div>
+        <button 
+          onClick={() => setIsDrawerOpen(true)}
+          className="p-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors"
+        >
+          <Menu size={24} />
+        </button>
+        
+        <h1 className="text-xl font-bold tracking-tight text-white drop-shadow-md">
+          د بریا راز
+        </h1>
 
-        <div className="flex items-center gap-2">
-          {actions}
-        </div>
+        <button 
+          onClick={toggleDarkMode}
+          className="p-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors"
+        >
+          {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
+        </button>
       </header>
 
-      {/* Drawer Overlay */}
+      {/* Side Drawer */}
       <AnimatePresence>
         {isDrawerOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={toggleDrawer}
-            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Drawer Content */}
-      <AnimatePresence>
-        {isDrawerOpen && (
-          <motion.aside
-            initial={{ x: isRTL ? '100%' : '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: isRTL ? '100%' : '-100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className={cn(
-              "fixed top-0 bottom-0 z-50 w-72 shadow-2xl flex flex-col bg-white text-zinc-900",
-              isRTL ? "right-0" : "left-0"
-            )}
-          >
-            <div className={cn("p-8 flex flex-col gap-4", themeColor.light, "text-white relative overflow-hidden")}>
-              <div className="absolute inset-0 geometric-bg opacity-20" />
-              <div className="relative z-10">
-                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md mb-4">
-                  <span className="text-3xl font-bold">ن</span>
-                </div>
-                <h2 className="text-2xl font-bold">نور الامارات</h2>
-                <p className="text-sm opacity-80">د اسلامي مطالعې ملګری</p>
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsDrawerOpen(false)}
+              className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className={cn(
+                "fixed top-0 right-0 bottom-0 w-72 z-50 p-6 flex flex-col gap-8",
+                isDarkMode ? "bg-[#121212]" : "bg-white"
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold" style={{ color: theme.primary }}>مینو</h2>
+                <button onClick={() => setIsDrawerOpen(false)} className="p-2">
+                  <X size={24} />
+                </button>
               </div>
-            </div>
 
-            <nav className="flex-1 py-6 overflow-y-auto">
-              {menuItems.map((item) => {
-                const isActive = location.pathname === item.path;
-                return (
-                  <button
-                    key={item.path}
+              <nav className="flex flex-col gap-2">
+                {MENU_ITEMS.map((item) => (
+                  <motion.button
+                    key={item.id}
+                    whileHover={{ x: -8 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => {
-                      navigate(item.path);
-                      toggleDrawer();
+                      onScreenChange(item.id);
+                      setIsDrawerOpen(false);
                     }}
                     className={cn(
-                      "w-full flex items-center gap-4 px-6 py-4 transition-all duration-200",
-                      isActive 
-                        ? cn("border-r-4", isRTL ? "border-white" : "border-white", themeColor.light, "text-white")
-                        : "hover:bg-black/5"
+                      "flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 text-right",
+                      currentScreen === item.id 
+                        ? (isDarkMode ? "bg-white/10 text-white" : "bg-black/5 text-black")
+                        : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
                     )}
                   >
-                    <AppIcon name={item.icon} size={24} />
+                    <span style={{ color: currentScreen === item.id ? theme.primary : 'inherit' }}>
+                      {getIcon(item.id)}
+                    </span>
                     <span className="text-lg font-medium">{item.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
+                  </motion.button>
+                ))}
+              </nav>
 
-            <div className="p-8 border-t border-slate-100">
-              <p className="text-xs text-center opacity-50">نسخه ۱.۰.۰ • په ایمان سره جوړ شوی</p>
-            </div>
-          </motion.aside>
+              <div className="mt-auto p-4 rounded-3xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900">
+                <p className="text-xs text-center opacity-50">v1.0.0 - Pashto Edition</p>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col relative z-10">
+      <main className="flex-1 z-10 relative">
         <AnimatePresence mode="wait">
           <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 10 }}
+            key={currentScreen}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="flex-1 flex flex-col"
+            className="h-full"
           >
             {children}
           </motion.div>
@@ -160,4 +133,4 @@ export function Layout({ children, title, showBack, actions }: LayoutProps) {
       </main>
     </div>
   );
-}
+};
