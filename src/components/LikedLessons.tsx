@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { SoftCard, SoftButton } from './SoftUI';
 import { useTheme } from './ThemeProvider';
 import { Heart, Pin, Bookmark, BookOpen, ArrowRight, Sparkles } from 'lucide-react';
-import defaultStructuredBook from '../assets/structured_book.json';
+import defaultStructuredBook from '../assets/structured_book';
 import { StructuredBook } from '../types';
 import { useLessonInteractions } from '../hooks/useLessonInteractions';
 
